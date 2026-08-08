@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Duplicate File Finder</title>
+    <meta name="description" content="A high-performance duplicate file finder with a modern web dashboard">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* ========== RESET & VARIABLES ========== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-body: #f0faf4;
+            --bg-white: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f7fdf9;
+            --bg-input: #f6faf7;
+            --bg-subtle: #e8f5ed;
+            --border: #d4e8da;
+            --border-focus: #34d399;
+            --text-primary: #1a2e23;
+            --text-secondary: #4a6b57;
+            --text-muted: #7da18d;
+            --green-50: #ecfdf5;
+            --green-100: #d1fae5;
+            --green-200: #a7f3d0;
+            --green-400: #34d399;
+            --green-500: #10b981;
+            --green-600: #059669;
+            --green-700: #047857;
+            --green-800: #065f46;
+            --emerald: #10b981;
+            --emerald-glow: rgba(16, 185, 129, 0.2);
+            --teal: #14b8a6;
+            --cyan: #06b6d4;
+            --sky: #0ea5e9;
+            --lime: #84cc16;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+            --violet: #8b5cf6;
+            --pink: #ec4899;
+            --shadow-sm: 0 1px 3px rgba(16, 60, 36, 0.06);
+            --shadow: 0 4px 20px rgba(16, 60, 36, 0.08);
+            --shadow-lg: 0 12px 40px rgba(16, 60, 36, 0.12);
+            --shadow-glow: 0 0 40px rgba(16, 185, 129, 0.15);
+            --radius: 20px;
+            --radius-sm: 12px;
+            --radius-xs: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ========== BACKGROUND DECORATION ========== */
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+        }
+
+        .bg-blob-1 {
+            width: 500px; height: 500px;
+            top: -150px; right: -100px;
+            background: linear-gradient(135deg, #a7f3d0, #6ee7b7);
+            animation: blobFloat1 18s ease-in-out infinite;
+        }
+
+        .bg-blob-2 {
+            width: 400px; height: 400px;
+            bottom: -100px; left: -100px;
+            background: linear-gradient(135deg, #99f6e4, #5eead4);
+            animation: blobFloat2 22s ease-in-out infinite;
+        }
+
+        .bg-blob-3 {
+            width: 300px; height: 300px;
+            top: 40%; left: 50%;
+            background: linear-gradient(135deg, #bef264, #a7f3d0);
+            animation: blobFloat3 16s ease-in-out infinite;
+        }
+
+        @keyframes blobFloat1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-40px, 60px) scale(1.05); }
+            66% { transform: translate(30px, -30px) scale(0.95); }
+        }
+
+        @keyframes blobFloat2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(60px, -50px) scale(1.08); }
+        }
+
+        @keyframes blobFloat3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-50px, 40px) scale(1.1); }
+        }
+
+        /* ========== LAYOUT ========== */
+        .app-wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 40px 28px;
+        }
+
+        /* ========== HERO SPLIT ========== */
+        .hero-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+            margin-bottom: 40px;
+            min-height: 380px;
+        }
+
+        @media (max-width: 900px) {
+            .hero-section { grid-template-columns: 1fr; gap: 24px; }
+        }
+
+        .hero-left {
+            padding-right: 20px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 18px;
+            border-radius: 100px;
+            background: var(--green-100);
+            border: 1px solid var(--green-200);
+            color: var(--green-700);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .hero-badge .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--green-500);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--emerald-glow); }
+            50% { opacity: 0.5; box-shadow: 0 0 0 6px transparent; }
+        }
+
+        h1 {
+            font-size: 44px;
+            font-weight: 900;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            background: linear-gradient(135deg, var(--green-800) 0%, var(--green-500) 40%, var(--teal) 70%, var(--cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .hero-description {
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+
+        .hero-highlights {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .highlight-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 16px;
+            border-radius: 100px;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .highlight-chip:hover {
+            border-color: var(--green-400);
+            color: var(--green-700);
+            background: var(--green-50);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .highlight-chip .chip-icon {
+            font-size: 16px;
+        }
+
+        /* ========== SCAN CARD (Right Side) ========== */
+        .hero-right {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .scan-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .scan-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--green-400), var(--teal), var(--cyan));
+        }
+
+        .scan-card-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scan-card-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .scan-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .input-row input {
+            flex: 1;
+            padding: 16px 20px;
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .input-row input:focus {
+            border-color: var(--green-400);
+            box-shadow: 0 0 0 4px var(--emerald-glow);
+            background: var(--bg-white);
+        }
+
+        .input-row input::placeholder { color: var(--text-muted); }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 32px;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--green-500), var(--teal));
+            color: white;
+            box-shadow: 0 4px 16px var(--emerald-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--emerald-glow), var(--shadow-glow);
+        }
+
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--rose), #e11d48);
+            color: white;
+            box-shadow: 0 4px 16px rgba(244, 63, 94, 0.2);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(244, 63, 94, 0.3);
+        }
+
+        .btn-sm { padding: 10px 20px; font-size: 13px; border-radius: var(--radius-xs); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-subtle);
+            border-color: var(--green-400);
+            color: var(--green-700);
+        }
+
+        /* ========== PROGRESS ========== */
+        .progress-area {
+            display: none;
+            margin-top: 28px;
+        }
+
+        .progress-area.active { display: block; animation: fadeSlideUp 0.4s ease; }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: var(--green-100);
+            border-radius: 100px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--green-400), var(--teal), var(--cyan), var(--green-400));
+            background-size: 300% 100%;
+            border-radius: 100px;
+            animation: shimmer 2.5s ease-in-out infinite;
+            transition: width 0.6s ease;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+
+        .log-box {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            max-height: 140px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 12.5px;
+            line-height: 2;
+            color: var(--text-secondary);
+        }
+
+        .log-box .log-line {
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .log-box .log-line::before {
+            content: '\25B6'; /* right arrow */
+            color: var(--green-500);
+            font-size: 8px;
+        }
+
+        /* ========== STATS CARDS ========== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--green-200);
+        }
+
+        .stat-card .card-stripe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 5px; height: 100%;
+            border-radius: 20px 0 0 20px;
+        }
+
+        .stat-icon-circle {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            margin-bottom: 14px;
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* Color variants */
+        .c-green .card-stripe { background: var(--green-500); }
+        .c-green .stat-icon-circle { background: var(--green-50); }
+        .c-green .stat-value { color: var(--green-700); }
+
+        .c-rose .card-stripe { background: var(--rose); }
+        .c-rose .stat-icon-circle { background: #fff1f2; }
+        .c-rose .stat-value { color: var(--rose); }
+
+        .c-violet .card-stripe { background: var(--violet); }
+        .c-violet .stat-icon-circle { background: #f5f3ff; }
+        .c-violet .stat-value { color: var(--violet); }
+
+        .c-cyan .card-stripe { background: var(--cyan); }
+        .c-cyan .stat-icon-circle { background: #ecfeff; }
+        .c-cyan .stat-value { color: var(--cyan); }
+
+        .c-amber .card-stripe { background: var(--amber); }
+        .c-amber .stat-icon-circle { background: #fffbeb; }
+        .c-amber .stat-value { color: var(--amber); }
+
+        /* ========== CONTENT PANELS ========== */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) { .content-grid { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel-heading {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+
+        .panel-heading .h-icon {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+            background: var(--green-50);
+        }
+
+        /* ========== DONUT CHART ========== */
+        .chart-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .donut-wrap {
+            position: relative;
+            width: 180px; height: 180px;
+            margin-bottom: 24px;
+        }
+
+        .donut-wrap svg { transform: rotate(-90deg); }
+
+        .donut-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .donut-center .big-num {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--green-700);
+        }
+
+        .donut-center .sub-text {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+
+        .legend-list { width: 100%; }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--bg-subtle);
+        }
+
+        .legend-row:last-child { border-bottom: none; }
+
+        .legend-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-swatch {
+            width: 10px; height: 10px;
+            border-radius: 3px;
+        }
+
+        .legend-name {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .legend-count {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* ========== TABLE ========== */
+        .table-scroll {
+            overflow-x: auto;
+            max-height: 560px;
+            overflow-y: auto;
+        }
+
+        .dup-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .dup-table th {
+            text-align: left;
+            padding: 14px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            border-bottom: 2px solid var(--border);
+            background: var(--bg-white);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .dup-table td {
+            padding: 16px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--bg-subtle);
+            vertical-align: top;
+        }
+
+        .dup-table tbody tr {
+            transition: var(--transition);
+        }
+
+        .dup-table tbody tr:hover {
+            background: var(--green-50);
+        }
+
+        .group-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px; height: 38px;
+            border-radius: var(--radius-xs);
+            background: var(--green-50);
+            color: var(--green-700);
+            font-weight: 800;
+            font-size: 14px;
+            border: 1px solid var(--green-200);
+        }
+
+        .file-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .file-list li {
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border-radius: var(--radius-xs);
+            word-break: break-all;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .file-list li:hover { background: var(--green-50); }
+
+        .file-list li:first-child { border-left: 3px solid var(--green-500); }
+        .file-list li:not(:first-child) { border-left: 3px solid var(--rose); }
+
+        .file-tag {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .file-tag.original {
+            background: var(--green-100);
+            color: var(--green-700);
+        }
+
+        .file-tag.duplicate {
+            background: #ffe4e6;
+            color: var(--rose);
+        }
+
+        .hash-pill {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-subtle);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .size-pill {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .size-pill.wasted {
+            background: #ffe4e6;
+            color: var(--rose);
+        }
+
+        .size-pill.normal {
+            background: var(--green-50);
+            color: var(--green-700);
+        }
+
+        /* ========== TOOLBAR ========== */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .result-count {
+            font-size: 13px;
+            color: var(--text-muted);
+            background: var(--bg-subtle);
+            padding: 4px 12px;
+            border-radius: 100px;
+        }
+
+        .result-count strong { color: var(--green-700); }
+
+        /* ========== MODAL ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeSlideUp 0.3s ease;
+        }
+
+        .modal-box {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-box .modal-emoji { font-size: 52px; margin-bottom: 16px; }
+
+        .modal-box h3 {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .modal-box p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+            line-height: 1.7;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        /* ========== RESULTS SECTION ========== */
+        .results-section { display: none; }
+
+        .results-section.active {
+            display: block;
+            animation: fadeSlideUp 0.6s ease;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== EMPTY STATE ========== */
+        .empty-state {
+            text-align: center;
+            padding: 56px 24px;
+        }
+
+        .empty-state .empty-emoji { font-size: 56px; margin-bottom: 16px; }
+
+        .empty-state h3 {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            color: var(--green-700);
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* ========== TOAST ========== */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 14px 22px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: var(--shadow-lg);
+            animation: toastIn 0.4s ease, toastOut 0.4s ease 3.6s forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 420px;
+        }
+
+        .toast.success {
+            background: var(--green-50);
+            border: 1px solid var(--green-200);
+            color: var(--green-700);
+        }
+
+        .toast.error {
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            color: var(--rose);
+        }
+
+        @keyframes toastIn {
+            from { transform: translateX(120px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* ========== SPINNER ========== */
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ========== SCROLLBAR ========== */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--green-200); border-radius: 100px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--green-400); }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            text-align: center;
+            padding: 32px 0 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .footer span { color: var(--green-500); font-weight: 700; }
+
+        /* ========== INFO SECTION ========== */
+        .info-section {
+            margin-bottom: 32px;
+        }
+
+        .info-section .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-section .section-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--green-200);
+        }
+
+        .info-card .card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            margin-bottom: 16px;
+        }
+
+        .info-card .card-icon.bg-green { background: var(--green-50); }
+        .info-card .card-icon.bg-cyan { background: #ecfeff; }
+        .info-card .card-icon.bg-violet { background: #f5f3ff; }
+        .info-card .card-icon.bg-amber { background: #fffbeb; }
+
+        .info-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .info-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Pipeline / How It Works */
+        .pipeline {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+        }
+
+        .pipeline h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .pipeline-steps {
+            display: flex;
+            align-items: flex-start;
+            gap: 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .pipeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1;
+            min-width: 140px;
+            max-width: 200px;
+            position: relative;
+        }
+
+        .step-circle {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-circle.s1 { background: var(--green-100); border: 2px solid var(--green-400); }
+        .step-circle.s2 { background: #ecfeff; border: 2px solid var(--cyan); }
+        .step-circle.s3 { background: #f5f3ff; border: 2px solid var(--violet); }
+        .step-circle.s4 { background: #fffbeb; border: 2px solid var(--amber); }
+
+        .step-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .step-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            max-width: 150px;
+        }
+
+        .step-arrow {
+            display: flex;
+            align-items: center;
+            padding-top: 16px;
+            color: var(--green-400);
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        /* Tech badges */
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--bg-subtle);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .tech-badge:hover {
+            background: var(--green-100);
+            border-color: var(--green-400);
+            color: var(--green-700);
+            transform: translateY(-2px);
+        }
+
+        .tech-badge .badge-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 700px) {
+            .pipeline-steps { flex-direction: column; align-items: center; }
+            .step-arrow { transform: rotate(90deg); padding: 8px 0; }
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 640px) {
+            h1 { font-size: 36px; }
+            .input-row { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background blobs -->
+    <div class="bg-decoration">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+        <div class="bg-blob bg-blob-3"></div>
+    </div>
+
+    <div class="app-wrapper">
+        <!-- Hero Split Section -->
+        <section class="hero-section">
+            <!-- Left: Info -->
+            <div class="hero-left">
+                <div class="hero-badge">
+                    <span class="dot"></span>
+                    Automated Storage &amp; File Utility
+                </div>
+                <h1>Smart Duplicate File Finder</h1>
+                <p class="hero-description">
+                    <strong>Smart Duplicate File Finder</strong> is an automated utility designed to identify and manage duplicate files within your storage. It scans folders, compares file sizes, and uses digital hashing to accurately detect identical files. By identifying redundant files, it helps reduce unnecessary storage usage and keeps your files organized. Simple, fast, and efficient file management at your fingertips.
+                </p>
+                <div class="hero-highlights">
+                    <span class="highlight-chip">
+                        <svg class="chip-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><circle cx="11" cy="13" r="3"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                        Folder Scanning
+                    </span>
+                    <span class="highlight-chip">
+                        <svg class="chip-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        MD5 Hashing
+                    </span>
+                    <span class="highlight-chip">
+                        <svg class="chip-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        3-Stage Speed
+                    </span>
+                    <span class="highlight-chip">
+                        <svg class="chip-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M21 19c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14"></path><path d="M21 5v14"></path></svg>
+                        Space Recovery
+                    </span>
+                    <span class="highlight-chip">
+                        <svg class="chip-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        Auto Reports
+                    </span>
+                    <span class="highlight-chip">
+                        <svg class="chip-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        One-Click Cleanup
+                    </span>
+                </div>
+            </div>
+
+            <!-- Right: Scan Card -->
+            <div class="hero-right">
+                <div class="scan-card" id="scanSection">
+                    <div class="scan-card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        Scan a Folder
+                    </div>
+                    <div class="scan-card-subtitle">Paste or type the path of the directory you want to scan for duplicate files.</div>
+
+                    <div class="scan-label">Target Directory</div>
+                    <div class="input-row">
+                        <input type="text" id="folderInput" placeholder="e.g.  C:\Users\YourName\Downloads" autofocus>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <button class="btn btn-primary" id="scanBtn" onclick="startScan()" style="width:100%; justify-content:center;">
+                            <span id="scanBtnText">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                Start Scan
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="progress-area" id="progressArea">
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progressBar" style="width: 8%"></div>
+                        </div>
+                        <div class="log-box" id="logBox"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Info Section -->
+        <section class="info-section">
+            <div class="section-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                About This Project
+            </div>
+            <div class="section-subtitle">Smart Duplicate File Finder demonstrates automated file system navigation, cryptographic hashing, data integrity verification, and storage optimization.</div>
+
+            <!-- How It Works Pipeline -->
+            <div class="pipeline">
+                <h3>
+                    <span class="h-icon" style="background:var(--green-50)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </span>
+                    How It Works
+                </h3>
+                <div class="pipeline-steps">
+                    <div class="pipeline-step">
+                        <div class="step-circle s1">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green-700)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <div class="step-label">Stage 1: Walk</div>
+                        <div class="step-desc">Recursively traverse all folders &amp; group files by byte size</div>
+                    </div>
+                    <div class="step-arrow">&#10132;</div>
+                    <div class="pipeline-step">
+                        <div class="step-circle s2">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
+                        <div class="step-label">Stage 2: Fast Filter</div>
+                        <div class="step-desc">8 KB partial hash to instantly eliminate 95% of non-duplicates</div>
+                    </div>
+                    <div class="step-arrow">&#10132;</div>
+                    <div class="pipeline-step">
+                        <div class="step-circle s3">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+                        </div>
+                        <div class="step-label">Stage 3: Verify</div>
+                        <div class="step-desc">Full MD5 hash computed in parallel threads for confirmed matches</div>
+                    </div>
+                    <div class="step-arrow">&#10132;</div>
+                    <div class="pipeline-step">
+                        <div class="step-circle s4">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <div class="step-label">Results</div>
+                        <div class="step-desc">Grouped duplicates with wasted space calculation &amp; cleanup</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Cards Grid -->
+            <div class="info-grid">
+                <!-- Storage Optimization -->
+                <div class="info-card">
+                    <div class="card-icon bg-green">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M21 19c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14"></path><path d="M21 5v14"></path></svg>
+                    </div>
+                    <h3>Storage Optimization</h3>
+                    <p>Demonstrates core file system &amp; storage concepts: <strong>file system traversal</strong> using <code>os.walk()</code>, <strong>cryptographic hashing</strong> via MD5 for data integrity, <strong>storage optimization</strong> through duplicate detection, and <strong>automated cleanup</strong>.</p>
+                </div>
+
+                <!-- The Concept -->
+                <div class="info-card">
+                    <div class="card-icon bg-cyan">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1.55.6 2.95 1.5 3.5.76.76 1.23 1.52 1.41 2.5"></path></svg>
+                    </div>
+                    <h3>The Concept</h3>
+                    <p>Every file has a unique digital fingerprint (hash). Two files with <strong>identical MD5 hashes</strong> are exact byte-for-byte copies. The scanner exploits this to find duplicates across any directory &mdash; no matter the file name or location.</p>
+                </div>
+
+                <!-- Key Features -->
+                <div class="info-card">
+                    <div class="card-icon bg-violet">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.71 1.26-1.55 1.66-2.5M12 2l-7 7m10-7 7 7M8 12l8 8"></path><path d="m14 2 8 8-8.5 8.5c-.83.83-2.17.83-3 0l-5.5-5.5c-.83-.83-.83-2.17 0-3L14 2z"></path></svg>
+                    </div>
+                    <h3>Key Features</h3>
+                    <p><strong>3-stage scanning</strong> with size pre-filtering &amp; partial hashing for speed. <strong>Multi-threaded</strong> full hash verification. <strong>Real-time progress</strong> tracking. <strong>Auto-generated</strong> JSON &amp; TXT reports. <strong>One-click cleanup</strong> to free wasted storage space.</p>
+                </div>
+
+                <!-- Tech Stack -->
+                <div class="info-card">
+                    <div class="card-icon bg-amber">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    </div>
+                    <h3>Tech Stack</h3>
+                    <p>Built entirely with Python standard libraries plus Flask for the web UI. No heavy dependencies required.</p>
+                    <div class="tech-badges">
+                        <span class="tech-badge"><span class="badge-dot" style="background:#3776ab"></span> Python</span>
+                        <span class="tech-badge"><span class="badge-dot" style="background:var(--green-500)"></span> Flask</span>
+                        <span class="tech-badge"><span class="badge-dot" style="background:var(--cyan)"></span> hashlib</span>
+                        <span class="tech-badge"><span class="badge-dot" style="background:var(--amber)"></span> os / sys</span>
+                        <span class="tech-badge"><span class="badge-dot" style="background:var(--violet)"></span> threading</span>
+                        <span class="tech-badge"><span class="badge-dot" style="background:var(--rose)"></span> HTML/CSS/JS</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results -->
+        <section class="results-section" id="resultsSection">
+            <div class="stats-row" id="statsRow"></div>
+
+            <div class="content-grid">
+                <!-- Chart Panel -->
+                <div class="panel">
+                    <div class="panel-heading">
+                        <span class="h-icon">&#128200;</span>
+                        File Type Breakdown
+                    </div>
+                    <div class="chart-area" id="chartArea"></div>
+                </div>
+
+                <!-- Table Panel -->
+                <div class="panel">
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <div class="panel-heading" style="margin-bottom:0">
+                                <span class="h-icon">&#128194;</span>
+                                Duplicate Groups
+                            </div>
+                            <span class="result-count" id="resultCount"></span>
+                        </div>
+                        <button class="btn btn-danger btn-sm" id="deleteAllBtn" onclick="showDeleteModal()" style="display:none;">
+                            &#128465; Clean Up
+                        </button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="dup-table" id="dupTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Files</th>
+                                    <th>Size</th>
+                                    <th>Wasted</th>
+                                    <th>Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dupTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            Built with <span>&#9829;</span> using Python, Flask &amp; MD5 Hashing
+        </footer>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <div class="modal-emoji">&#128465;</div>
+            <h3>Delete All Duplicates?</h3>
+            <p id="deleteModalText">This will permanently remove duplicate copies while keeping 1 original per group. This action cannot be undone.</p>
+            <div class="modal-btns">
+                <button class="btn btn-ghost btn-sm" onclick="hideDeleteModal()">Cancel</button>
+                <button class="btn btn-danger btn-sm" id="confirmDeleteBtn" onclick="deleteAllDuplicates()">
+                    &#128465; Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        let scanResults = null;
+        let progressInterval = null;
+
+        // ========== SCAN ==========
+        async function startScan() {
+            const folderInput = document.getElementById('folderInput');
+            const folderPath = folderInput.value.trim();
+            if (!folderPath) {
+                showToast('Please enter a folder path.', 'error');
+                folderInput.focus();
+                return;
+            }
+
+            const scanBtn = document.getElementById('scanBtn');
+            scanBtn.disabled = true;
+            document.getElementById('scanBtnText').innerHTML = '<span class="spinner"></span> Scanning...';
+
+            const progressArea = document.getElementById('progressArea');
+            const logBox = document.getElementById('logBox');
+            progressArea.classList.add('active');
+            logBox.innerHTML = '';
+
+            document.getElementById('resultsSection').classList.remove('active');
+
+            try {
+                const res = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folder_path: folderPath }),
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.error || 'Scan failed.', 'error');
+                    resetScanButton();
+                    return;
+                }
+
+                let lastMsgCount = 0;
+                progressInterval = setInterval(async () => {
+                    try {
+                        const pRes = await fetch('/api/progress');
+                        const pData = await pRes.json();
+
+                        if (pData.messages.length > lastMsgCount) {
+                            for (let i = lastMsgCount; i < pData.messages.length; i++) {
+                                const line = document.createElement('div');
+                                line.className = 'log-line';
+                                line.textContent = pData.messages[i];
+                                logBox.appendChild(line);
+                                logBox.scrollTop = logBox.scrollHeight;
+                            }
+                            lastMsgCount = pData.messages.length;
+                        }
+
+                        const msg = pData.messages[pData.messages.length - 1] || '';
+                        if (msg.includes('Stage 1')) document.getElementById('progressBar').style.width = '25%';
+                        else if (msg.includes('Stage 2')) document.getElementById('progressBar').style.width = '55%';
+                        else if (msg.includes('Stage 3')) document.getElementById('progressBar').style.width = '85%';
+
+                        if (pData.error) {
+                            clearInterval(progressInterval);
+                            showToast('Error: ' + pData.error, 'error');
+                            resetScanButton();
+                            return;
+                        }
+
+                        if (!pData.is_scanning && pData.has_results) {
+                            clearInterval(progressInterval);
+                            document.getElementById('progressBar').style.width = '100%';
+                            await loadResults();
+                            resetScanButton();
+                        }
+                    } catch (e) {
+                        clearInterval(progressInterval);
+                        resetScanButton();
+                    }
+                }, 400);
+
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+                resetScanButton();
+            }
+        }
+
+        function resetScanButton() {
+            document.getElementById('scanBtn').disabled = false;
+            document.getElementById('scanBtnText').innerHTML = '&#128269; Start Scan';
+        }
+
+        // ========== RESULTS ==========
+        async function loadResults() {
+            try {
+                const res = await fetch('/api/results');
+                const data = await res.json();
+                if (!res.ok) return;
+                scanResults = data;
+                renderStats(data);
+                renderChart(data.type_distribution);
+                renderTable(data.groups);
+                document.getElementById('resultsSection').classList.add('active');
+                document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                showToast(`Done! ${data.duplicate_groups} duplicate group(s) found in ${data.elapsed}s`, 'success');
+            } catch (e) {
+                showToast('Failed to load results.', 'error');
+            }
+        }
+
+        function renderStats(data) {
+            document.getElementById('statsRow').innerHTML = `
+                <div class="stat-card c-green">
+                    <div class="card-stripe"></div>
+                    <div class="stat-icon-circle">&#128196;</div>
+                    <div class="stat-value">${data.total_files.toLocaleString()}</div>
+                    <div class="stat-label">Files Scanned</div>
+                </div>
+                <div class="stat-card c-rose">
+                    <div class="card-stripe"></div>
+                    <div class="stat-icon-circle">&#128203;</div>
+                    <div class="stat-value">${data.duplicate_groups.toLocaleString()}</div>
+                    <div class="stat-label">Duplicate Groups</div>
+                </div>
+                <div class="stat-card c-violet">
+                    <div class="card-stripe"></div>
+                    <div class="stat-icon-circle">&#128451;</div>
+                    <div class="stat-value">${data.total_duplicates.toLocaleString()}</div>
+                    <div class="stat-label">Duplicate Files</div>
+                </div>
+                <div class="stat-card c-cyan">
+                    <div class="card-stripe"></div>
+                    <div class="stat-icon-circle">&#128190;</div>
+                    <div class="stat-value">${data.wasted_formatted}</div>
+                    <div class="stat-label">Wasted Space</div>
+                </div>
+                <div class="stat-card c-amber">
+                    <div class="card-stripe"></div>
+                    <div class="stat-icon-circle">&#9889;</div>
+                    <div class="stat-value">${data.elapsed}s</div>
+                    <div class="stat-label">Scan Time</div>
+                </div>
+            `;
+        }
+
+        // ========== CHART ==========
+        const COLORS = ['#10b981', '#06b6d4', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1', '#84cc16', '#0ea5e9'];
+
+        function renderChart(types) {
+            const container = document.getElementById('chartArea');
+            if (!types || types.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No type data</p></div>';
+                return;
+            }
+
+            const total = types.reduce((s, t) => s + t.count, 0);
+            const r = 75, cx = 90, cy = 90;
+            const circ = 2 * Math.PI * r;
+
+            let segs = '', off = 0;
+            types.slice(0, 8).forEach((t, i) => {
+                const pct = t.count / total;
+                const dash = circ * pct;
+                const gap = circ - dash;
+                const col = COLORS[i % COLORS.length];
+                segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+                    stroke="${col}" stroke-width="22" stroke-linecap="round"
+                    stroke-dasharray="${dash - 2} ${gap + 2}"
+                    stroke-dashoffset="${-off}"
+                    style="transition: all 0.8s ease ${i * 0.12}s; opacity: 0; animation: segFade 0.5s ease ${i * 0.12}s forwards"/>`;
+                off += dash;
+            });
+
+            const legends = types.slice(0, 8).map((t, i) => `
+                <div class="legend-row">
+                    <div class="legend-left">
+                        <div class="legend-swatch" style="background:${COLORS[i % COLORS.length]}"></div>
+                        <span class="legend-name">${t.type}</span>
+                    </div>
+                    <span class="legend-count">${t.count} &middot; ${t.size}</span>
+                </div>`).join('');
+
+            container.innerHTML = `
+                <style>@keyframes segFade { from { opacity: 0; } to { opacity: 1; } }</style>
+                <div class="donut-wrap">
+                    <svg viewBox="0 0 180 180" width="180" height="180">${segs}</svg>
+                    <div class="donut-center">
+                        <div class="big-num">${total}</div>
+                        <div class="sub-text">Duplicates</div>
+                    </div>
+                </div>
+                <div class="legend-list">${legends}</div>`;
+        }
+
+        // ========== TABLE ==========
+        function renderTable(groups) {
+            const tbody = document.getElementById('dupTableBody');
+            const countEl = document.getElementById('resultCount');
+            const delBtn = document.getElementById('deleteAllBtn');
+
+            if (!groups || groups.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5">
+                    <div class="empty-state">
+                        <div class="empty-emoji">&#10024;</div>
+                        <h3>All Clean!</h3>
+                        <p>No duplicate files found in this directory.</p>
+                    </div></td></tr>`;
+                countEl.textContent = '';
+                delBtn.style.display = 'none';
+                return;
+            }
+
+            countEl.innerHTML = `<strong>${groups.length}</strong> groups`;
+            delBtn.style.display = '';
+
+            tbody.innerHTML = groups.map(g => {
+                const files = g.files.map((f, i) => {
+                    const tag = i === 0
+                        ? '<span class="file-tag original">Original</span>'
+                        : '<span class="file-tag duplicate">Duplicate</span>';
+                    return `<li>${tag} ${f.path}</li>`;
+                }).join('');
+
+                return `<tr>
+                    <td><span class="group-num">${g.group_id}</span></td>
+                    <td><ul class="file-list">${files}</ul></td>
+                    <td><span class="size-pill normal">${g.file_size_formatted}</span></td>
+                    <td><span class="size-pill wasted">${g.wasted_formatted}</span></td>
+                    <td><span class="hash-pill">${g.hash.substring(0, 12)}...</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ========== DELETE ==========
+        function showDeleteModal() {
+            if (!scanResults) return;
+            document.getElementById('deleteModalText').textContent =
+                `This will permanently delete ${scanResults.total_duplicates} duplicate file(s) and free ${scanResults.wasted_formatted}. The first file in each group is kept as the original.`;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function hideDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        async function deleteAllDuplicates() {
+            if (!scanResults) return;
+            const paths = [];
+            scanResults.groups.forEach(g => g.files.slice(1).forEach(f => paths.push(f.path)));
+
+            document.getElementById('confirmDeleteBtn').innerHTML = '<span class="spinner"></span> Deleting...';
+            document.getElementById('confirmDeleteBtn').disabled = true;
+
+            try {
+                const res = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paths }),
+                });
+                const data = await res.json();
+                hideDeleteModal();
+                showToast(`Deleted ${data.deleted_count} file(s), freed ${data.freed_formatted}`, 'success');
+                if (data.deleted_count > 0) {
+                    document.getElementById('deleteAllBtn').style.display = 'none';
+                    document.getElementById('dupTableBody').innerHTML = `<tr><td colspan="5">
+                        <div class="empty-state">
+                            <div class="empty-emoji">&#127881;</div>
+                            <h3>All Clean!</h3>
+                            <p>Removed ${data.deleted_count} file(s), freed ${data.freed_formatted}</p>
+                        </div></td></tr>`;
+                }
+            } catch (e) {
+                showToast('Delete failed: ' + e.message, 'error');
+            } finally {
+                document.getElementById('confirmDeleteBtn').innerHTML = '&#128465; Yes, Delete';
+                document.getElementById('confirmDeleteBtn').disabled = false;
+            }
+        }
+
+        // ========== TOAST ==========
+        function showToast(msg, type = 'success') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            const icon = type === 'success' ? '&#10004;' : '&#10060;';
+            t.innerHTML = `<span>${icon}</span> ${msg}`;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        // Enter key to scan
+        document.getElementById('folderInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') startScan();
+        });
+    </script>
+</body>
+</html>
