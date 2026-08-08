@@ -5,6 +5,8 @@ import re
 from scanner import scan_directory
 from utils import format_size, calculate_wasted_space
 from report import generate_report
+from web_app import app  # Expose Flask WSGI application for deployment (gunicorn app:app)
+
 
 
 def clean_path_input(user_input):
