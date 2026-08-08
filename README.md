@@ -2,6 +2,11 @@
 
 > An automated, high-performance storage management utility that scans directories, detects identical files via MD5 digital hashing, and reclaims wasted disk space.
 
+[![Live Web Dashboard](https://img.shields.io/badge/Live_Demo-smart--duplicate--file--finder.onrender.com-10b981?style=for-the-badge&logo=render)](https://smart-duplicate-file-finder.onrender.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+🌐 **Live Web Application:** [https://smart-duplicate-file-finder.onrender.com](https://smart-duplicate-file-finder.onrender.com)
+
 ---
 
 ## 📖 About The Project
@@ -68,12 +73,15 @@ pip install -r requirements.txt
 ---
 
 ### Option 1: Web Dashboard (Recommended)
-Launch the web dashboard server:
-```bash
-python web_app.py
-```
-Open your browser and navigate to:
-👉 **[http://127.0.0.1:5000](http://127.0.0.1:5000)**
+
+- **🌐 Live Hosted App (No Installation Needed):**
+  👉 **[https://smart-duplicate-file-finder.onrender.com](https://smart-duplicate-file-finder.onrender.com)**
+
+- **💻 Run Locally:**
+  ```bash
+  python web_app.py
+  ```
+  Open your browser and navigate to: **[http://127.0.0.1:5000](http://127.0.0.1:5000)**
 
 ---
 
