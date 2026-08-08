@@ -1,6 +1,6 @@
 """
 Duplicate File Finder - Flask Web Dashboard
-A stunning dark-themed web interface for scanning and managing duplicate files.
+A stunning light-themed web interface for scanning and managing duplicate files.
 """
 import os
 import json
@@ -36,6 +36,34 @@ def progress_callback(message):
     scan_state["progress_messages"].append(message)
 
 
+def create_sample_demo_folder():
+    """Creates a sample demo directory with duplicate files for live web testing."""
+    sample_dir = os.path.abspath("sample_demo")
+    os.makedirs(os.path.join(sample_dir, "documents"), exist_ok=True)
+    os.makedirs(os.path.join(sample_dir, "backup"), exist_ok=True)
+    os.makedirs(os.path.join(sample_dir, "images"), exist_ok=True)
+
+    # Sample duplicate 1
+    content1 = b"Smart Duplicate File Finder Demo File Content - 2026\n" * 100
+    with open(os.path.join(sample_dir, "documents", "report.txt"), "wb") as f:
+        f.write(content1)
+    with open(os.path.join(sample_dir, "backup", "report_copy.txt"), "wb") as f:
+        f.write(content1)
+
+    # Sample duplicate 2
+    content2 = b"Binary sample data for image hash test\x00\xFF\xAA\xBB" * 500
+    with open(os.path.join(sample_dir, "images", "photo.jpg"), "wb") as f:
+        f.write(content2)
+    with open(os.path.join(sample_dir, "backup", "photo_duplicate.jpg"), "wb") as f:
+        f.write(content2)
+
+    # Unique file
+    with open(os.path.join(sample_dir, "documents", "unique.txt"), "wb") as f:
+        f.write(b"Unique content that has no duplicate.")
+
+    return sample_dir
+
+
 def run_scan(folder_path):
     """Background thread function to run the scan."""
     try:
@@ -46,7 +74,6 @@ def run_scan(folder_path):
 
         wasted = calculate_wasted_space(duplicates)
 
-        # Build structured results
         groups = []
         for idx, (file_hash, paths) in enumerate(duplicates.items(), 1):
             file_size = 0
@@ -77,14 +104,12 @@ def run_scan(folder_path):
                 "files": file_details,
             })
 
-        # Sort by wasted space descending (biggest offenders first)
         groups.sort(key=lambda g: g["wasted"], reverse=True)
 
-        # Build file type distribution
         ext_counts = {}
         ext_sizes = {}
         for g in groups:
-            for f in g["files"][1:]:  # skip original, count duplicates only
+            for f in g["files"][1:]:
                 ext = f["extension"]
                 ext_counts[ext] = ext_counts.get(ext, 0) + 1
                 ext_sizes[ext] = ext_sizes.get(ext, 0) + g["file_size"]
@@ -121,8 +146,17 @@ def start_scan():
     data = request.get_json()
     folder_path = data.get("folder_path", "").strip().strip('"').strip("'")
 
-    if not folder_path or not os.path.isdir(folder_path):
-        return jsonify({"error": f"Invalid directory: '{folder_path}'"}), 400
+    # If demo button or empty, use sample demo folder
+    if not folder_path or folder_path.lower() in ["sample", "demo"]:
+        folder_path = create_sample_demo_folder()
+
+    if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+        # Helpful error for cloud deployment when user enters Windows paths
+        if ":" in folder_path or "\\" in folder_path:
+            return jsonify({
+                "error": f"Path '{folder_path}' not found on this cloud server (Linux). Cloud servers cannot read local PC paths like C:\\. Click 'Test Sample Demo' or try scanning './'!"
+            }), 400
+        return jsonify({"error": f"Invalid directory path: '{folder_path}'"}), 400
 
     if scan_state["is_scanning"]:
         return jsonify({"error": "A scan is already in progress."}), 409
@@ -134,6 +168,21 @@ def start_scan():
     thread.start()
 
     return jsonify({"status": "started", "folder_path": folder_path})
+
+
+@app.route("/api/sample", methods=["POST"])
+def scan_sample():
+    sample_dir = create_sample_demo_folder()
+    if scan_state["is_scanning"]:
+        return jsonify({"error": "A scan is already in progress."}), 409
+
+    reset_scan_state()
+    scan_state["is_scanning"] = True
+
+    thread = threading.Thread(target=run_scan, args=(sample_dir,), daemon=True)
+    thread.start()
+
+    return jsonify({"status": "started", "folder_path": sample_dir})
 
 
 @app.route("/api/progress")

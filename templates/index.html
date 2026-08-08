@@ -1158,12 +1158,16 @@
                     <div class="input-row">
                         <input type="text" id="folderInput" placeholder="e.g.  C:\Users\YourName\Downloads" autofocus>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <button class="btn btn-primary" id="scanBtn" onclick="startScan()" style="width:100%; justify-content:center;">
+                    <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="scanBtn" onclick="startScan()" style="flex: 1; min-width: 140px; justify-content:center;">
                             <span id="scanBtnText">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                                 Start Scan
                             </span>
+                        </button>
+                        <button class="btn btn-ghost" id="demoBtn" onclick="startDemoScan()" style="justify-content:center;" title="Test live demo on cloud server">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Demo Scan
                         </button>
                     </div>
 
@@ -1348,6 +1352,11 @@
     <script>
         let scanResults = null;
         let progressInterval = null;
+
+        function startDemoScan() {
+            document.getElementById('folderInput').value = 'sample';
+            startScan();
+        }
 
         // ========== SCAN ==========
         async function startScan() {
