@@ -1158,6 +1158,8 @@
                     <div class="input-row">
                         <input type="text" id="folderInput" placeholder="e.g.  C:\Users\YourName\Downloads" autofocus>
                     </div>
+                    <input type="file" id="folderPicker" webkitdirectory directory multiple style="display:none" onchange="handleFolderSelect(event)">
+                    
                     <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-primary" id="scanBtn" onclick="startScan()" style="flex: 1; min-width: 140px; justify-content:center;">
                             <span id="scanBtnText">
@@ -1165,9 +1167,13 @@
                                 Start Scan
                             </span>
                         </button>
+                        <button class="btn btn-ghost" id="pickBtn" onclick="document.getElementById('folderPicker').click()" style="justify-content:center;" title="Pick any folder directly from your computer">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            Select PC Folder
+                        </button>
                         <button class="btn btn-ghost" id="demoBtn" onclick="startDemoScan()" style="justify-content:center;" title="Test live demo on cloud server">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                            Demo Scan
+                            Demo
                         </button>
                     </div>
 
@@ -1356,6 +1362,97 @@
         function startDemoScan() {
             document.getElementById('folderInput').value = 'sample';
             startScan();
+        }
+
+        // ========== CLIENT FOLDER PICKER SCAN ==========
+        async function computeFileHash(file) {
+            const slice = file.slice(0, 65536);
+            const buffer = await slice.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return `${file.size}_${hashHex}`;
+        }
+
+        async function handleFolderSelect(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const folderName = files[0].webkitRelativePath.split('/')[0] || 'Selected Folder';
+            document.getElementById('folderInput').value = folderName;
+
+            const scanBtn = document.getElementById('scanBtn');
+            scanBtn.disabled = true;
+            document.getElementById('scanBtnText').innerHTML = '<span class="spinner"></span> Processing...';
+
+            const progressArea = document.getElementById('progressArea');
+            const logBox = document.getElementById('logBox');
+            progressArea.classList.add('active');
+            logBox.innerHTML = '';
+            document.getElementById('resultsSection').classList.remove('active');
+
+            function logMsg(msg) {
+                const line = document.createElement('div');
+                line.className = 'log-line';
+                line.textContent = msg;
+                logBox.appendChild(line);
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+
+            logMsg(`Stage 1/3: Reading ${files.length.toLocaleString()} files from '${folderName}'...`);
+            document.getElementById('progressBar').style.width = '30%';
+
+            const payloadFiles = [];
+            let processed = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const f = files[i];
+                if (f.size > 0) {
+                    try {
+                        const hash = await computeFileHash(f);
+                        payloadFiles.push({
+                            name: f.name,
+                            path: f.webkitRelativePath || f.name,
+                            size: f.size,
+                            hash: hash
+                        });
+                    } catch (err) {}
+                }
+                processed++;
+                if (processed % 50 === 0) {
+                    logMsg(`Stage 2/3: Header-hashed ${processed}/${files.length} files...`);
+                    document.getElementById('progressBar').style.width = Math.min(85, 30 + Math.floor((processed / files.length) * 55)) + '%';
+                }
+            }
+
+            logMsg(`Stage 3/3: Verifying duplicate groups for ${payloadFiles.length} candidate files...`);
+            document.getElementById('progressBar').style.width = '95%';
+
+            try {
+                const res = await fetch('/api/scan_client_files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: payloadFiles, folder_name: folderName })
+                });
+                const data = await res.json();
+                if (res.ok && data.results) {
+                    document.getElementById('progressBar').style.width = '100%';
+                    logMsg(`Scan Complete! Found ${data.results.duplicate_groups} duplicate group(s).`);
+                    scanResults = data.results;
+                    renderStats(data.results);
+                    renderChart(data.results.type_distribution);
+                    renderTable(data.results.groups);
+                    document.getElementById('resultsSection').classList.add('active');
+                    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    showToast(`Done! ${data.results.duplicate_groups} duplicate group(s) found in ${data.results.elapsed}s`, 'success');
+                } else {
+                    showToast(data.error || 'Scan failed', 'error');
+                }
+            } catch (e) {
+                showToast('Error sending results: ' + e.message, 'error');
+            } finally {
+                resetScanButton();
+            }
         }
 
         // ========== SCAN ==========

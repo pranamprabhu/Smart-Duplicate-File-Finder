@@ -6,6 +6,7 @@ import os
 import json
 import time
 import threading
+from collections import defaultdict
 from flask import Flask, render_template, request, jsonify
 from scanner import scan_directory
 from utils import format_size, calculate_wasted_space
@@ -76,8 +77,7 @@ def run_scan(folder_path, display_name=None):
             if progress_callback:
                 progress_callback(
                     f"Notice: Path '{folder_path}' does not exist on this server. "
-                    "If running on Render Cloud, local PC paths (C:\\) cannot be accessed over the internet. "
-                    "Run locally at http://127.0.0.1:5000 to scan local PC drives!"
+                    "Use the 'Select Folder from PC' button to pick any folder directly from your computer!"
                 )
         else:
             total_files, duplicates = scan_directory(folder_path, progress_callback)
@@ -165,7 +165,6 @@ def start_scan():
     reset_scan_state()
     scan_state["is_scanning"] = True
 
-    # If demo button or 'sample', scan sample demo folder
     if not user_input or user_input.lower() in ["sample", "demo"]:
         target_path = create_sample_demo_folder()
         display_name = "sample_demo (Server Demo Files)"
@@ -177,6 +176,89 @@ def start_scan():
     thread.start()
 
     return jsonify({"status": "started", "folder_path": display_name})
+
+
+@app.route("/api/scan_client_files", methods=["POST"])
+def scan_client_files():
+    """Processes browser folder picker files hashed client-side."""
+    data = request.get_json() or {}
+    files_list = data.get("files", [])
+    folder_name = data.get("folder_name", "Selected PC Folder")
+
+    if not files_list:
+        return jsonify({"error": "No files selected."}), 400
+
+    start_time = time.time()
+    reset_scan_state()
+
+    # Group files by MD5 hash
+    hash_map = defaultdict(list)
+    total_files = len(files_list)
+
+    for item in files_list:
+        f_hash = item.get("hash")
+        f_path = item.get("path") or item.get("name")
+        f_size = item.get("size", 0)
+        if f_hash:
+            hash_map[f_hash].append({"path": f_path, "name": item.get("name"), "size": f_size})
+
+    duplicates = {h: items for h, items in hash_map.items() if len(items) > 1}
+    wasted = sum(items[0]["size"] * (len(items) - 1) for items in duplicates.values())
+
+    groups = []
+    for idx, (f_hash, items) in enumerate(duplicates.items(), 1):
+        f_size = items[0]["size"]
+        file_details = []
+        for it in items:
+            fname = it["name"]
+            ext = os.path.splitext(fname)[1].lower() or "(none)"
+            file_details.append({
+                "path": it["path"],
+                "name": fname,
+                "extension": ext,
+                "directory": os.path.dirname(it["path"]),
+            })
+
+        groups.append({
+            "group_id": idx,
+            "hash": f_hash,
+            "count": len(items),
+            "file_size": f_size,
+            "file_size_formatted": format_size(f_size),
+            "wasted": f_size * (len(items) - 1),
+            "wasted_formatted": format_size(f_size * (len(items) - 1)),
+            "files": file_details,
+        })
+
+    groups.sort(key=lambda g: g["wasted"], reverse=True)
+
+    ext_counts = {}
+    ext_sizes = {}
+    for g in groups:
+        for f in g["files"][1:]:
+            ext = f["extension"]
+            ext_counts[ext] = ext_counts.get(ext, 0) + 1
+            ext_sizes[ext] = ext_sizes.get(ext, 0) + g["file_size"]
+
+    type_distribution = [
+        {"type": ext, "count": ext_counts[ext], "size": format_size(ext_sizes[ext])}
+        for ext in sorted(ext_counts, key=lambda e: ext_counts[e], reverse=True)
+    ]
+
+    elapsed = round(time.time() - start_time, 2)
+    scan_state["results"] = {
+        "total_files": total_files,
+        "duplicate_groups": len(duplicates),
+        "total_duplicates": sum(len(items) - 1 for items in duplicates.values()),
+        "wasted_bytes": wasted,
+        "wasted_formatted": format_size(wasted),
+        "elapsed": elapsed,
+        "folder_path": folder_name,
+        "groups": groups,
+        "type_distribution": type_distribution,
+    }
+
+    return jsonify({"status": "done", "results": scan_state["results"]})
 
 
 @app.route("/api/sample", methods=["POST"])
