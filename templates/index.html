@@ -1361,11 +1361,10 @@
         // ========== SCAN ==========
         async function startScan() {
             const folderInput = document.getElementById('folderInput');
-            const folderPath = folderInput.value.trim();
+            let folderPath = folderInput.value.trim();
             if (!folderPath) {
-                showToast('Please enter a folder path.', 'error');
-                folderInput.focus();
-                return;
+                folderPath = 'sample';
+                folderInput.value = 'sample';
             }
 
             const scanBtn = document.getElementById('scanBtn');
