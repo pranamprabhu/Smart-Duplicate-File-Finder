@@ -64,11 +64,24 @@ def create_sample_demo_folder():
     return sample_dir
 
 
-def run_scan(folder_path):
+def run_scan(folder_path, display_name=None):
     """Background thread function to run the scan."""
     try:
         scan_state["start_time"] = time.time()
-        total_files, duplicates = scan_directory(folder_path, progress_callback)
+        
+        # Check if directory exists
+        if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+            total_files = 0
+            duplicates = {}
+            if progress_callback:
+                progress_callback(
+                    f"Notice: Path '{folder_path}' does not exist on this server. "
+                    "If running on Render Cloud, local PC paths (C:\\) cannot be accessed over the internet. "
+                    "Run locally at http://127.0.0.1:5000 to scan local PC drives!"
+                )
+        else:
+            total_files, duplicates = scan_directory(folder_path, progress_callback)
+
         elapsed = time.time() - scan_state["start_time"]
         scan_state["elapsed"] = round(elapsed, 2)
 
@@ -126,7 +139,7 @@ def run_scan(folder_path):
             "wasted_bytes": wasted,
             "wasted_formatted": format_size(wasted),
             "elapsed": scan_state["elapsed"],
-            "folder_path": folder_path,
+            "folder_path": display_name or folder_path,
             "groups": groups,
             "type_distribution": type_distribution,
         }
@@ -144,12 +157,7 @@ def index():
 @app.route("/api/scan", methods=["POST"])
 def start_scan():
     data = request.get_json() or {}
-    folder_path = data.get("folder_path", "").strip().strip('"').strip("'")
-
-    # Automatic fallback: If input is empty, demo, or a path that doesn't exist on server,
-    # seamlessly scan sample demo files so the scan ALWAYS works 100% of the time!
-    if not folder_path or not os.path.exists(folder_path) or not os.path.isdir(folder_path):
-        folder_path = create_sample_demo_folder()
+    user_input = data.get("folder_path", "").strip().strip('"').strip("'")
 
     if scan_state["is_scanning"]:
         return jsonify({"error": "A scan is already in progress."}), 409
@@ -157,10 +165,18 @@ def start_scan():
     reset_scan_state()
     scan_state["is_scanning"] = True
 
-    thread = threading.Thread(target=run_scan, args=(folder_path,), daemon=True)
+    # If demo button or 'sample', scan sample demo folder
+    if not user_input or user_input.lower() in ["sample", "demo"]:
+        target_path = create_sample_demo_folder()
+        display_name = "sample_demo (Server Demo Files)"
+    else:
+        target_path = user_input
+        display_name = user_input
+
+    thread = threading.Thread(target=run_scan, args=(target_path, display_name), daemon=True)
     thread.start()
 
-    return jsonify({"status": "started", "folder_path": folder_path})
+    return jsonify({"status": "started", "folder_path": display_name})
 
 
 @app.route("/api/sample", methods=["POST"])
@@ -172,10 +188,10 @@ def scan_sample():
     reset_scan_state()
     scan_state["is_scanning"] = True
 
-    thread = threading.Thread(target=run_scan, args=(sample_dir,), daemon=True)
+    thread = threading.Thread(target=run_scan, args=(sample_dir, "sample_demo (Server Demo Files)"), daemon=True)
     thread.start()
 
-    return jsonify({"status": "started", "folder_path": sample_dir})
+    return jsonify({"status": "started", "folder_path": "sample_demo (Server Demo Files)"})
 
 
 @app.route("/api/progress")
